@@ -1,5 +1,3 @@
-import { upload } from '@vercel/blob/client';
-
 const MAX_FILES = 20;
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const MAX_TOTAL_SIZE = 60 * 1024 * 1024;
@@ -96,25 +94,99 @@ function collectFields() {
     );
 }
 
-async function postSolicitud(payload) {
+async function fetchWithTimeout(url, options, timeoutMs, timeoutMessage) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 70000);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-        return await fetch('/api/submit', {
-            method: 'POST',
-            signal: controller.signal,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
+        return await fetch(url, { ...options, signal: controller.signal });
     } catch (error) {
         if (error?.name === 'AbortError') {
-            throw new Error('El servidor tardó demasiado en responder. La solicitud puede haberse guardado; revise Vercel Blob antes de volver a enviarla.');
+            throw new Error(timeoutMessage);
         }
         throw error;
     } finally {
         clearTimeout(timer);
     }
+}
+
+async function requestPresignedUpload(pathname, file) {
+    const response = await fetchWithTimeout(
+        '/api/presign-upload',
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                pathname,
+                contentType: file.type,
+                size: file.size,
+            }),
+        },
+        20000,
+        'El servidor tardó demasiado en autorizar la subida del documento.'
+    );
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok || !result.presignedUrl) {
+        throw new Error(result.error || `No se pudo autorizar la subida (${response.status}).`);
+    }
+
+    return result.presignedUrl;
+}
+
+function uploadToPresignedUrl(presignedUrl, file, onProgress) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', presignedUrl, true);
+        xhr.timeout = 90000;
+        xhr.setRequestHeader('Content-Type', file.type);
+
+        xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable && typeof onProgress === 'function') {
+                onProgress(Math.round((event.loaded / event.total) * 100));
+            }
+        });
+
+        xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve();
+                return;
+            }
+
+            let details = '';
+            try {
+                const parsed = JSON.parse(xhr.responseText || '{}');
+                details = parsed.error || parsed.message || '';
+            } catch {
+                details = xhr.responseText || '';
+            }
+
+            reject(new Error(details || `Vercel Blob rechazó el archivo con el error ${xhr.status}.`));
+        });
+
+        xhr.addEventListener('timeout', () => {
+            reject(new Error(`La subida de “${file.name}” tardó demasiado y fue cancelada.`));
+        });
+
+        xhr.addEventListener('error', () => {
+            reject(new Error(`No se pudo conectar con Vercel Blob para subir “${file.name}”.`));
+        });
+
+        xhr.send(file);
+    });
+}
+
+async function postSolicitud(payload) {
+    return fetchWithTimeout(
+        '/api/submit',
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        },
+        70000,
+        'El servidor tardó demasiado en responder. La solicitud puede haberse guardado; revise Vercel Blob antes de volver a enviarla.'
+    );
 }
 
 form.addEventListener('submit', async (event) => {
@@ -142,48 +214,24 @@ form.addEventListener('submit', async (event) => {
             const storedName = `${String(index + 1).padStart(2, '0')}_${safeSegment(file.name, `documento_${index + 1}`)}`;
             const pathname = `${folder}/documentos/${storedName}`;
 
+            submitButtonText.textContent = `Autorizando archivo ${index + 1} de ${files.length}…`;
+            showStatus('loading', `Autorizando la subida de ${file.name}…`);
+
+            const presignedUrl = await requestPresignedUpload(pathname, file);
+
             submitButtonText.textContent = `Subiendo archivo ${index + 1} de ${files.length}…`;
-
-            const uploadController = new AbortController();
-            const uploadTimer = setTimeout(() => uploadController.abort(), 60000);
-            let blob;
-
-            try {
-                blob = await upload(pathname, file, {
-                    access: 'private',
-                    handleUploadUrl: '/api/blob-upload',
-                    multipart: file.size > 5 * 1024 * 1024,
-                    abortSignal: uploadController.signal,
-                    clientPayload: JSON.stringify({
-                        folder,
-                        originalName: file.name,
-                        storedName,
-                        size: file.size,
-                        type: file.type,
-                    }),
-                    onUploadProgress(progress) {
-                        const percentage = Math.max(0, Math.min(100, Math.round(progress.percentage || 0)));
-                        showStatus(
-                            'loading',
-                            `Subiendo ${file.name} (${index + 1}/${files.length}): ${percentage}%`
-                        );
-                    },
-                });
-            } catch (error) {
-                if (error?.name === 'AbortError') {
-                    throw new Error(`La subida de “${file.name}” tardó demasiado y fue cancelada.`);
-                }
-                throw error;
-            } finally {
-                clearTimeout(uploadTimer);
-            }
+            await uploadToPresignedUrl(presignedUrl, file, (percentage) => {
+                showStatus(
+                    'loading',
+                    `Subiendo ${file.name} (${index + 1}/${files.length}): ${percentage}%`
+                );
+            });
 
             uploadedFiles.push({
                 originalName: file.name,
                 storedName,
-                pathname: blob.pathname,
-                url: blob.url,
-                contentType: blob.contentType || file.type,
+                pathname,
+                contentType: file.type,
                 size: file.size,
             });
         }
