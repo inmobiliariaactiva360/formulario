@@ -1,6 +1,9 @@
 {
   "framework": "vite",
   "functions": {
+    "api/blob-upload.js": {
+      "maxDuration": 30
+    },
     "api/submit.js": {
       "maxDuration": 60
     }
