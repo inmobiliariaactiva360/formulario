@@ -50,16 +50,25 @@ async function handleRequest(request) {
 
     const validUntil = Date.now() + 15 * 60 * 1000;
 
+    // Para crear un blob nuevo, el token de delegación no debe intentar
+    // resolver previamente una ruta que todavía no existe. La ruta concreta
+    // queda limitada en la URL firmada que se genera a continuación.
     const signedToken = await issueSignedToken({
-      pathname,
       operations: ['put'],
       validUntil,
+      allowedContentTypes: [contentType],
+      maximumSizeInBytes: size,
     });
 
     const { presignedUrl } = await presignUrl(signedToken, {
+      access: 'private',
       pathname,
       operation: 'put',
       validUntil,
+      allowedContentTypes: [contentType],
+      maximumSizeInBytes: size,
+      addRandomSuffix: false,
+      allowOverwrite: false,
     });
 
     return json({
