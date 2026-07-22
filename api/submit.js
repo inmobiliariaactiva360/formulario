@@ -3,7 +3,7 @@ import { get, head, put } from '@vercel/blob';
 const RECIPIENT_EMAIL = process.env.RECIPIENT_EMAIL || 'inmobiliariaactiva360@gmail.com';
 const MAX_FILES = 20;
 const MAX_TOTAL_BYTES = 60 * 1024 * 1024;
-const MAX_EMAIL_RAW_BYTES = 20 * 1024 * 1024;
+const MAX_EMAIL_RAW_BYTES = 18 * 1024 * 1024;
 const ALLOWED_CONTENT_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png']);
 
 const LABELS = {
@@ -72,14 +72,13 @@ function isSafeFolder(folder) {
 }
 
 function formatMoney(value) {
-    if (!value || Number.isNaN(Number(String(value).replace(',', '.')))) {
-        return value || 'No indicado';
-    }
+    const number = Number(String(value || '').replace(',', '.'));
+    if (!Number.isFinite(number)) return value || 'No indicado';
 
     return new Intl.NumberFormat('es-ES', {
         style: 'currency',
         currency: 'EUR',
-    }).format(Number(String(value).replace(',', '.')));
+    }).format(number);
 }
 
 function formattedValue(field, value) {
@@ -95,6 +94,15 @@ function madridDate() {
         dateStyle: 'full',
         timeStyle: 'medium',
     }).format(new Date());
+}
+
+function withTimeout(promise, milliseconds, message) {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), milliseconds);
+    });
+
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 function buildSummaryHtml(fields, files, receivedAt) {
@@ -134,33 +142,29 @@ function buildSummaryText(fields, files, receivedAt) {
     });
 
     lines.push('', 'DOCUMENTACIÓN RECIBIDA', '-'.repeat(70));
-    files.forEach((file) => {
-        lines.push(`- ${file.storedName} (original: ${file.originalName})`);
-    });
+    files.forEach((file) => lines.push(`- ${file.storedName} (original: ${file.originalName})`));
 
     return `${lines.join('\n')}\n`;
 }
 
-async function streamToBuffer(stream) {
-    const reader = stream.getReader();
-    const chunks = [];
-    let total = 0;
+async function readPrivateBlob(pathname, filename) {
+    const result = await withTimeout(
+        get(pathname, { access: 'private' }),
+        12000,
+        `Tiempo agotado al recuperar ${filename}.`
+    );
 
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        total += value.byteLength;
+    if (!result || result.statusCode !== 200 || !result.stream) {
+        throw new Error(`No se pudo recuperar ${filename} para adjuntarlo.`);
     }
 
-    const combined = new Uint8Array(total);
-    let offset = 0;
-    chunks.forEach((chunk) => {
-        combined.set(chunk, offset);
-        offset += chunk.byteLength;
-    });
+    const arrayBuffer = await withTimeout(
+        new Response(result.stream).arrayBuffer(),
+        12000,
+        `Tiempo agotado al leer ${filename}.`
+    );
 
-    return Buffer.from(combined);
+    return Buffer.from(arrayBuffer);
 }
 
 async function sendEmail({ fields, files, summaryHtml, summaryText, folder }) {
@@ -170,7 +174,7 @@ async function sendEmail({ fields, files, summaryHtml, summaryText, folder }) {
     if (!apiKey || !from) {
         return {
             sent: false,
-            warning: 'faltan las variables RESEND_API_KEY o EMAIL_FROM en Vercel',
+            warning: 'faltan RESEND_API_KEY o EMAIL_FROM en Vercel',
         };
     }
 
@@ -190,51 +194,60 @@ async function sendEmail({ fields, files, summaryHtml, summaryText, folder }) {
 
     if (totalBytes <= MAX_EMAIL_RAW_BYTES) {
         for (const file of files) {
-            const result = await get(file.pathname, { access: 'private' });
-            if (!result || result.statusCode !== 200 || !result.stream) {
-                throw new Error(`No se pudo recuperar ${file.storedName} para adjuntarlo.`);
-            }
-
-            const content = await streamToBuffer(result.stream);
+            const content = await readPrivateBlob(file.pathname, file.storedName);
             attachments.push({
                 filename: file.storedName,
                 content: content.toString('base64'),
             });
         }
     } else {
-        attachmentNote = '<p><strong>Aviso:</strong> los documentos superan el límite seguro para adjuntarlos al correo. Han quedado guardados en el almacenamiento privado de Vercel.</p>';
+        attachmentNote = '<p><strong>Aviso:</strong> los documentos superan el límite para adjuntarlos al correo y han quedado guardados en el almacenamiento privado de Vercel.</p>';
     }
 
-    const subject = `Nueva solicitud de financiación - ${fields.titular1_nombre || 'Sin nombre'}`;
     const emailHtml = `${summaryHtml.replace('</body></html>', '')}${attachmentNote}<p><strong>Carpeta privada:</strong> ${escapeHtml(folder)}</p></body></html>`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
 
-    const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            'Idempotency-Key': folder.replaceAll('/', '-').slice(0, 256),
-        },
-        body: JSON.stringify({
-            from,
-            to: [RECIPIENT_EMAIL],
-            reply_to: fields.email || undefined,
-            subject,
-            html: emailHtml,
-            attachments,
-        }),
-    });
+    try {
+        const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            signal: controller.signal,
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+                'Idempotency-Key': folder.replaceAll('/', '-').slice(0, 256),
+            },
+            body: JSON.stringify({
+                from,
+                to: [RECIPIENT_EMAIL],
+                reply_to: fields.email || undefined,
+                subject: `Nueva solicitud de financiación - ${fields.titular1_nombre || 'Sin nombre'}`,
+                html: emailHtml,
+                attachments,
+            }),
+        });
 
-    const responseData = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        throw new Error(responseData.message || responseData.error || 'Resend rechazó el correo.');
+        const responseData = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(responseData.message || responseData.error || `Resend respondió con ${response.status}.`);
+        }
+
+        return { sent: true, id: responseData.id || null };
+    } catch (error) {
+        if (error?.name === 'AbortError') {
+            throw new Error('El servicio de correo tardó demasiado en responder.');
+        }
+        throw error;
+    } finally {
+        clearTimeout(timer);
     }
-
-    return { sent: true, id: responseData.id || null };
 }
 
 export async function POST(request) {
+    const startedAt = Date.now();
+
     try {
+        console.log('Inicio de procesamiento de solicitud');
         const payload = await request.json();
         const folder = payload?.folder;
         const incomingFields = payload?.fields;
@@ -270,14 +283,22 @@ export async function POST(request) {
         const files = [];
         let totalBytes = 0;
 
+        console.log('Verificando documentos', incomingFiles.length);
+
         for (const item of incomingFiles) {
             const pathname = cleanText(item?.pathname, 1000);
             const expectedPrefix = `${folder}/documentos/`;
+
             if (!pathname.startsWith(expectedPrefix) || pathname.includes('..')) {
                 return Response.json({ ok: false, error: 'Se ha detectado una ruta de documento no válida.' }, { status: 400 });
             }
 
-            const metadata = await head(pathname);
+            const metadata = await withTimeout(
+                head(pathname),
+                10000,
+                `Tiempo agotado al verificar ${pathname}.`
+            );
+
             if (!ALLOWED_CONTENT_TYPES.has(metadata.contentType)) {
                 return Response.json({ ok: false, error: `Tipo de documento no permitido: ${pathname}.` }, { status: 400 });
             }
@@ -299,47 +320,49 @@ export async function POST(request) {
         const receivedAt = madridDate();
         const summaryHtml = buildSummaryHtml(fields, files, receivedAt);
         const summaryText = buildSummaryText(fields, files, receivedAt);
-        const jsonContent = JSON.stringify({
-            receivedAt,
-            folder,
-            fields,
-            files,
-        }, null, 2);
+        const jsonContent = JSON.stringify({ receivedAt, folder, fields, files }, null, 2);
 
-        await Promise.all([
-            put(`${folder}/resultado-formulario.html`, summaryHtml, {
-                access: 'private',
-                contentType: 'text/html; charset=utf-8',
-                addRandomSuffix: false,
-            }),
-            put(`${folder}/resultado-formulario.txt`, summaryText, {
-                access: 'private',
-                contentType: 'text/plain; charset=utf-8',
-                addRandomSuffix: false,
-            }),
-            put(`${folder}/datos-formulario.json`, jsonContent, {
-                access: 'private',
-                contentType: 'application/json; charset=utf-8',
-                addRandomSuffix: false,
-            }),
-        ]);
+        console.log('Guardando resumen del expediente');
+
+        await withTimeout(
+            Promise.all([
+                put(`${folder}/resultado-formulario.html`, summaryHtml, {
+                    access: 'private',
+                    contentType: 'text/html; charset=utf-8',
+                    addRandomSuffix: false,
+                }),
+                put(`${folder}/resultado-formulario.txt`, summaryText, {
+                    access: 'private',
+                    contentType: 'text/plain; charset=utf-8',
+                    addRandomSuffix: false,
+                }),
+                put(`${folder}/datos-formulario.json`, jsonContent, {
+                    access: 'private',
+                    contentType: 'application/json; charset=utf-8',
+                    addRandomSuffix: false,
+                }),
+            ]),
+            20000,
+            'Tiempo agotado al guardar el resumen del expediente.'
+        );
+
+        console.log('Expediente guardado; iniciando correo');
 
         let emailResult;
         try {
-            emailResult = await sendEmail({
-                fields,
-                files,
-                summaryHtml,
-                summaryText,
-                folder,
-            });
+            emailResult = await sendEmail({ fields, files, summaryHtml, summaryText, folder });
         } catch (emailError) {
-            console.error('Solicitud guardada, pero falló el correo:', emailError);
+            console.error('Expediente guardado, pero falló el correo:', emailError);
             emailResult = {
                 sent: false,
                 warning: emailError instanceof Error ? emailError.message : 'error de correo no identificado',
             };
         }
+
+        console.log('Solicitud finalizada', {
+            emailSent: emailResult.sent,
+            durationMs: Date.now() - startedAt,
+        });
 
         return Response.json({
             ok: true,
@@ -350,7 +373,10 @@ export async function POST(request) {
     } catch (error) {
         console.error('Error procesando formulario:', error);
         return Response.json(
-            { ok: false, error: error instanceof Error ? error.message : 'Error interno del servidor.' },
+            {
+                ok: false,
+                error: error instanceof Error ? error.message : 'Error interno del servidor.',
+            },
             { status: 500 }
         );
     }
