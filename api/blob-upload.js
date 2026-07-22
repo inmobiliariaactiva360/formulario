@@ -8,7 +8,24 @@ function isSafeFolder(folder) {
         && /^solicitudes_financiacion\/[A-Za-z0-9._-]+__[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}__[a-f0-9]{12}$/.test(folder);
 }
 
-export async function POST(request) {
+export default async function handler(request) {
+    if (request.method !== 'POST') {
+        return Response.json(
+            { error: 'Método no permitido.' },
+            { status: 405, headers: { Allow: 'POST' } }
+        );
+    }
+
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+        console.error('Falta BLOB_READ_WRITE_TOKEN en este despliegue de Vercel.');
+        return Response.json(
+            {
+                error: 'El almacenamiento privado no está conectado a este entorno. Falta BLOB_READ_WRITE_TOKEN.',
+            },
+            { status: 500 }
+        );
+    }
+
     try {
         const body = await request.json();
 
