@@ -16,16 +16,6 @@ export default async function handler(request) {
         );
     }
 
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-        console.error('Falta BLOB_READ_WRITE_TOKEN en este despliegue de Vercel.');
-        return Response.json(
-            {
-                error: 'El almacenamiento privado no está conectado a este entorno. Falta BLOB_READ_WRITE_TOKEN.',
-            },
-            { status: 500 }
-        );
-    }
-
     try {
         const body = await request.json();
 
