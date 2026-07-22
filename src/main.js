@@ -96,6 +96,27 @@ function collectFields() {
     );
 }
 
+async function postSolicitud(payload) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 70000);
+
+    try {
+        return await fetch('/api/submit', {
+            method: 'POST',
+            signal: controller.signal,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+    } catch (error) {
+        if (error?.name === 'AbortError') {
+            throw new Error('El servidor tardó demasiado en responder. La solicitud puede haberse guardado; revise Vercel Blob antes de volver a enviarla.');
+        }
+        throw error;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 form.addEventListener('submit', async (event) => {
     event.preventDefault();
 
@@ -123,25 +144,39 @@ form.addEventListener('submit', async (event) => {
 
             submitButtonText.textContent = `Subiendo archivo ${index + 1} de ${files.length}…`;
 
-            const blob = await upload(pathname, file, {
-                access: 'private',
-                handleUploadUrl: '/api/blob-upload',
-                multipart: file.size > 5 * 1024 * 1024,
-                clientPayload: JSON.stringify({
-                    folder,
-                    originalName: file.name,
-                    storedName,
-                    size: file.size,
-                    type: file.type,
-                }),
-                onUploadProgress(progress) {
-                    const percentage = Math.max(0, Math.min(100, Math.round(progress.percentage || 0)));
-                    showStatus(
-                        'loading',
-                        `Subiendo ${file.name} (${index + 1}/${files.length}): ${percentage}%`
-                    );
-                },
-            });
+            const uploadController = new AbortController();
+            const uploadTimer = setTimeout(() => uploadController.abort(), 60000);
+            let blob;
+
+            try {
+                blob = await upload(pathname, file, {
+                    access: 'private',
+                    handleUploadUrl: '/api/blob-upload',
+                    multipart: file.size > 5 * 1024 * 1024,
+                    abortSignal: uploadController.signal,
+                    clientPayload: JSON.stringify({
+                        folder,
+                        originalName: file.name,
+                        storedName,
+                        size: file.size,
+                        type: file.type,
+                    }),
+                    onUploadProgress(progress) {
+                        const percentage = Math.max(0, Math.min(100, Math.round(progress.percentage || 0)));
+                        showStatus(
+                            'loading',
+                            `Subiendo ${file.name} (${index + 1}/${files.length}): ${percentage}%`
+                        );
+                    },
+                });
+            } catch (error) {
+                if (error?.name === 'AbortError') {
+                    throw new Error(`La subida de “${file.name}” tardó demasiado y fue cancelada.`);
+                }
+                throw error;
+            } finally {
+                clearTimeout(uploadTimer);
+            }
 
             uploadedFiles.push({
                 originalName: file.name,
@@ -156,27 +191,22 @@ form.addEventListener('submit', async (event) => {
         submitButtonText.textContent = 'Guardando y enviando correo…';
         showStatus('loading', 'Documentación subida. Generando el expediente y enviando el correo…');
 
-        const response = await fetch('/api/submit-handler', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folder, fields, files: uploadedFiles }),
-        });
-
+        const response = await postSolicitud({ folder, fields, files: uploadedFiles });
         const result = await response.json().catch(() => ({}));
 
         if (!response.ok || !result.ok) {
-            throw new Error(result.error || 'No se pudo completar la solicitud.');
+            throw new Error(result.error || `El servidor respondió con el error ${response.status}.`);
         }
 
         if (result.emailSent) {
             showStatus(
                 'success',
-                'Solicitud recibida correctamente. Los datos y documentos han sido guardados y enviados por correo.'
+                'Solicitud recibida correctamente. Los datos y documentos han sido guardados y enviados a inmobiliariaactiva360@gmail.com.'
             );
         } else {
             showStatus(
                 'warning',
-                `La solicitud y los documentos se han guardado correctamente, pero el correo no pudo enviarse: ${result.emailWarning || 'revise la configuración de correo en Vercel.'}`
+                `La solicitud y los documentos se han guardado correctamente, pero el correo no pudo enviarse: ${result.emailWarning || 'revise la configuración de correo en Vercel y Resend.'}`
             );
         }
 
@@ -184,7 +214,10 @@ form.addEventListener('submit', async (event) => {
         if (typeof window.updateFileLabel === 'function') {
             window.updateFileLabel();
         }
-        window.scrollTo({ top: submitStatus.getBoundingClientRect().top + window.scrollY - 30, behavior: 'smooth' });
+        window.scrollTo({
+            top: submitStatus.getBoundingClientRect().top + window.scrollY - 30,
+            behavior: 'smooth',
+        });
     } catch (error) {
         console.error(error);
         showStatus('error', error instanceof Error ? error.message : 'Se produjo un error inesperado.');
