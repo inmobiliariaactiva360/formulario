@@ -1,0 +1,8 @@
+{
+  "framework": "vite",
+  "functions": {
+    "api/submit.js": {
+      "maxDuration": 60
+    }
+  }
+}
