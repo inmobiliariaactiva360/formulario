@@ -149,7 +149,13 @@ function uploadToPresignedUrl(presignedUrl, file, onProgress) {
 
         xhr.addEventListener('load', () => {
             if (xhr.status >= 200 && xhr.status < 300) {
-                resolve();
+                let metadata = {};
+                try {
+                    metadata = JSON.parse(xhr.responseText || '{}');
+                } catch {
+                    metadata = {};
+                }
+                resolve(metadata);
                 return;
             }
 
@@ -174,6 +180,30 @@ function uploadToPresignedUrl(presignedUrl, file, onProgress) {
 
         xhr.send(file);
     });
+}
+
+async function verifyUploadedFile(pathname, file) {
+    const response = await fetchWithTimeout(
+        '/api/verify-upload',
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                pathname,
+                contentType: file.type,
+                size: file.size,
+            }),
+        },
+        15000,
+        `Vercel tardó demasiado en confirmar la subida de “${file.name}”.`
+    );
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+        throw new Error(result.error || `No se pudo verificar la subida (${response.status}).`);
+    }
+
+    return result;
 }
 
 async function postSolicitud(payload) {
@@ -220,24 +250,30 @@ form.addEventListener('submit', async (event) => {
             const presignedUrl = await requestPresignedUpload(pathname, file);
 
             submitButtonText.textContent = `Subiendo archivo ${index + 1} de ${files.length}…`;
-            await uploadToPresignedUrl(presignedUrl, file, (percentage) => {
+            const uploadMetadata = await uploadToPresignedUrl(presignedUrl, file, (percentage) => {
                 showStatus(
                     'loading',
                     `Subiendo ${file.name} (${index + 1}/${files.length}): ${percentage}%`
                 );
             });
 
+            const uploadedPathname = uploadMetadata?.pathname || pathname;
+            submitButtonText.textContent = `Verificando archivo ${index + 1} de ${files.length}…`;
+            showStatus('loading', `Verificando que ${file.name} se ha guardado correctamente…`);
+
+            const verifiedFile = await verifyUploadedFile(uploadedPathname, file);
+
             uploadedFiles.push({
                 originalName: file.name,
                 storedName,
-                pathname,
-                contentType: file.type,
-                size: file.size,
+                pathname: verifiedFile.pathname,
+                contentType: verifiedFile.contentType,
+                size: verifiedFile.size,
             });
         }
 
         submitButtonText.textContent = 'Guardando y enviando correo…';
-        showStatus('loading', 'Documentación subida. Generando el expediente y enviando el correo…');
+        showStatus('loading', 'Documentación subida y verificada. Generando el expediente y enviando el correo…');
 
         const response = await postSolicitud({ folder, fields, files: uploadedFiles });
         const result = await response.json().catch(() => ({}));
