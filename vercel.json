@@ -1,7 +1,10 @@
 {
   "framework": "vite",
   "functions": {
-    "api/blob-upload.js": {
+    "api/presign-upload.js": {
+      "maxDuration": 30
+    },
+    "api/verify-upload.js": {
       "maxDuration": 30
     },
     "api/submit.js": {
