@@ -8,14 +8,7 @@ function isSafeFolder(folder) {
         && /^solicitudes_financiacion\/[A-Za-z0-9._-]+__[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}__[a-f0-9]{12}$/.test(folder);
 }
 
-export default async function handler(request) {
-    if (request.method !== 'POST') {
-        return Response.json(
-            { error: 'Método no permitido.' },
-            { status: 405, headers: { Allow: 'POST' } }
-        );
-    }
-
+export async function POST(request) {
     try {
         const body = await request.json();
 
@@ -24,6 +17,7 @@ export default async function handler(request) {
             request,
             onBeforeGenerateToken: async (pathname, clientPayload) => {
                 let payload;
+
                 try {
                     payload = JSON.parse(clientPayload || '{}');
                 } catch {
@@ -61,7 +55,7 @@ export default async function handler(request) {
                 };
             },
             onUploadCompleted: async ({ blob, tokenPayload }) => {
-                console.log('Documento recibido', {
+                console.log('Documento recibido en Blob', {
                     pathname: blob.pathname,
                     tokenPayload,
                 });
@@ -70,9 +64,13 @@ export default async function handler(request) {
 
         return Response.json(response);
     } catch (error) {
-        console.error('Error de subida:', error);
+        console.error('Error autorizando la subida:', error);
         return Response.json(
-            { error: error instanceof Error ? error.message : 'No se pudo autorizar la subida.' },
+            {
+                error: error instanceof Error
+                    ? error.message
+                    : 'No se pudo autorizar la subida.',
+            },
             { status: 400 }
         );
     }
