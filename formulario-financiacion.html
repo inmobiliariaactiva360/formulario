@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estudio de Financiación Hipotecaria - Activa Inmobiliaria 360</title>
+
+    <style>
+        :root {
+            --color-principal: #172033;
+            --color-secundario: #27344d;
+            --color-dorado: #d8b74b;
+            --color-dorado-oscuro: #b7942f;
+            --color-fondo: #f4f6f9;
+            --color-blanco: #ffffff;
+            --color-texto: #283344;
+            --color-texto-suave: #687386;
+            --color-borde: #dce2ea;
+            --color-error: #b42318;
+            --sombra: 0 18px 50px rgba(23, 32, 51, 0.12);
+            --radio: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 40px 18px;
+            background:
+                radial-gradient(circle at top left, rgba(216, 183, 75, 0.12), transparent 34%),
+                linear-gradient(135deg, #eef1f6 0%, #f8f9fb 100%);
+            color: var(--color-texto);
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Roboto,
+                Arial,
+                sans-serif;
+            line-height: 1.5;
+        }
+
+        .page-container {
+            width: 100%;
+            max-width: 1050px;
+            margin: 0 auto;
+        }
+
+        .form-card {
+            overflow: hidden;
+            background: var(--color-blanco);
+            border: 1px solid rgba(220, 226, 234, 0.9);
+            border-radius: 22px;
+            box-shadow: var(--sombra);
+        }
+
+        .form-header {
+            position: relative;
+            padding: 38px 40px 34px;
+            overflow: hidden;
+            background: linear-gradient(135deg, rgba(23, 32, 51, 0.98), rgba(39, 52, 77, 0.97));
+            color: var(--color-blanco);
+            text-align: center;
+        }
+
+        .form-header::before {
+            content: "";
+            position: absolute;
+            top: -90px;
+            right: -80px;
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            background: rgba(216, 183, 75, 0.12);
+        }
+
+        .form-header::after {
+            content: "";
+            position: absolute;
+            bottom: -130px;
+            left: -80px;
+            width: 300px;
+            height: 300px;
+            border: 1px solid rgba(216, 183, 75, 0.15);
+            border-radius: 50%;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo-card {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    padding: 18px 26px;
+    border-radius: 22px;
+    background: #ffffff;
+    border: 1px solid rgba(216, 183, 75, 0.28);
+    box-shadow:
+        0 12px 32px rgba(0, 0, 0, 0.22),
+        0 2px 8px rgba(0, 0, 0, 0.08);
+}
+        .logo {
+            display: block;
+            width: 210px;
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .form-header h1 {
+            margin: 0;
+            font-size: clamp(27px, 4vw, 40px);
+            font-weight: 750;
+            line-height: 1.15;
+            letter-spacing: -0.7px;
+        }
+
+        .form-header p {
+            max-width: 720px;
+            margin: 14px auto 0;
+            color: rgba(255, 255, 255, 0.82);
+            font-size: 16px;
+            line-height: 1.7;
+        }
+
+        .gold-line {
+            width: 72px;
+            height: 3px;
+            margin: 22px auto 0;
+            background: var(--color-dorado);
+            border-radius: 20px;
+        }
+
+        .form-body {
+            padding: 38px 42px 46px;
+        }
+
+        .form-section {
+            margin-bottom: 38px;
+        }
+
+        .form-section:last-of-type {
+            margin-bottom: 28px;
+        }
+
+        .section-heading {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 0 0 24px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--color-borde);
+        }
+
+        .section-number {
+            display: inline-flex;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: var(--color-principal);
+            color: var(--color-dorado);
+            font-weight: 800;
+        }
+
+        .section-heading h2 {
+            margin: 0;
+            color: var(--color-principal);
+            font-size: 21px;
+            font-weight: 750;
+        }
+
+        .subsection {
+            margin-bottom: 28px;
+            padding: 24px;
+            background: #f8f9fb;
+            border: 1px solid #e6eaf0;
+            border-radius: var(--radio);
+        }
+
+        .subsection:last-child {
+            margin-bottom: 0;
+        }
+
+        .subsection-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 0 0 20px;
+            color: var(--color-principal);
+            font-size: 17px;
+            font-weight: 750;
+        }
+
+        .optional-label {
+            padding: 5px 9px;
+            border: 1px solid var(--color-borde);
+            border-radius: 20px;
+            background: var(--color-blanco);
+            color: var(--color-texto-suave);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+        }
+
+        .form-grid.three-columns {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            color: #334056;
+            font-size: 14px;
+            font-weight: 650;
+        }
+
+        .required {
+            color: var(--color-error);
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            min-height: 50px;
+            padding: 13px 14px;
+            border: 1px solid var(--color-borde);
+            border-radius: 10px;
+            outline: none;
+            background: var(--color-blanco);
+            color: var(--color-texto);
+            font: inherit;
+            font-size: 15px;
+            transition:
+                border-color 0.2s ease,
+                box-shadow 0.2s ease,
+                background-color 0.2s ease;
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: #9aa3b1;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--color-dorado);
+            box-shadow: 0 0 0 4px rgba(216, 183, 75, 0.14);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        select {
+            cursor: pointer;
+        }
+
+        .input-prefix-wrapper {
+            position: relative;
+        }
+
+        .input-prefix {
+            position: absolute;
+            top: 50%;
+            right: 15px;
+            color: var(--color-texto-suave);
+            font-weight: 700;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        .input-prefix-wrapper input {
+            padding-right: 48px;
+        }
+
+        .documents-information {
+            margin-bottom: 20px;
+            padding: 20px 22px;
+            background: #f8f9fb;
+            border-left: 4px solid var(--color-dorado);
+            border-radius: 0 12px 12px 0;
+            color: #475569;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .documents-information p {
+            margin: 0 0 8px;
+        }
+
+        .documents-information p:last-child {
+            margin: 0;
+        }
+
+        .documents-information ul {
+            margin: 0 0 12px 22px;
+            padding: 0;
+        }
+
+        .documents-information li {
+            margin-bottom: 3px;
+        }
+
+        .documents-information li::marker {
+            color: var(--color-dorado-oscuro);
+        }
+
+        .file-upload {
+            position: relative;
+        }
+
+        .file-upload input[type="file"] {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .file-upload-label {
+            display: flex;
+            min-height: 180px;
+            padding: 28px 20px;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #cbd3df;
+            border-radius: 15px;
+            background: #fafbfc;
+            cursor: pointer;
+            text-align: center;
+            transition:
+                border-color 0.2s ease,
+                background-color 0.2s ease,
+                transform 0.2s ease;
+        }
+
+        .file-upload-label:hover,
+        .file-upload-label.drag-active {
+            border-color: var(--color-dorado);
+            background: rgba(216, 183, 75, 0.07);
+            transform: translateY(-1px);
+        }
+
+        .upload-content {
+            display: flex;
+            max-width: 650px;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .upload-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 58px;
+            height: 58px;
+            margin-bottom: 14px;
+            border-radius: 16px;
+            background: var(--color-principal);
+            color: var(--color-dorado);
+        }
+
+        .upload-icon svg {
+            width: 29px;
+            height: 29px;
+        }
+
+        .upload-title {
+            margin-bottom: 6px;
+            color: var(--color-principal);
+            font-size: 16px;
+            font-weight: 750;
+        }
+
+        .upload-help {
+            color: var(--color-texto-suave);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .selected-files {
+            display: none;
+            margin-top: 14px;
+            padding: 14px 16px;
+            background: #f8f9fb;
+            border: 1px solid var(--color-borde);
+            border-radius: 10px;
+            color: #475569;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .selected-files.visible {
+            display: block;
+        }
+
+        .selected-files strong {
+            color: var(--color-principal);
+        }
+
+        .privacy-box {
+            margin-top: 26px;
+            padding: 22px;
+            background: #f8f9fb;
+            border: 1px solid var(--color-borde);
+            border-radius: 13px;
+        }
+
+        .privacy-text {
+            margin: 0 0 18px;
+            color: var(--color-texto-suave);
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 11px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            flex: 0 0 auto;
+            width: 19px;
+            height: 19px;
+            min-height: auto;
+            margin: 2px 0 0;
+            padding: 0;
+            accent-color: var(--color-principal);
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            color: #3c485d;
+            font-size: 14px;
+            font-weight: 550;
+            line-height: 1.55;
+            cursor: pointer;
+        }
+
+        .submit-area {
+            margin-top: 30px;
+        }
+
+        .submit-button {
+            display: flex;
+            width: 100%;
+            min-height: 58px;
+            padding: 15px 24px;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border: 0;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--color-dorado), #efcf68);
+            box-shadow: 0 10px 25px rgba(183, 148, 47, 0.24);
+            color: #172033;
+            font: inherit;
+            font-size: 16px;
+            font-weight: 800;
+            cursor: pointer;
+            transition:
+                transform 0.2s ease,
+                box-shadow 0.2s ease,
+                filter 0.2s ease;
+        }
+
+        .submit-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 30px rgba(183, 148, 47, 0.3);
+            filter: brightness(1.02);
+        }
+
+        .submit-button:active {
+            transform: translateY(0);
+        }
+
+        .submit-button svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .form-footer {
+            padding: 20px 30px;
+            background: var(--color-principal);
+            color: rgba(255, 255, 255, 0.65);
+            text-align: center;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 800px) {
+            body {
+                padding: 20px 12px;
+            }
+
+            .form-header {
+                padding: 32px 22px 29px;
+            }
+
+            .form-body {
+                padding: 28px 22px 36px;
+            }
+
+            .form-grid,
+            .form-grid.three-columns {
+                grid-template-columns: 1fr;
+            }
+
+            .form-group.full-width {
+                grid-column: auto;
+            }
+
+            .subsection {
+                padding: 20px 17px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 0;
+                background: var(--color-blanco);
+            }
+
+            .form-card {
+                border: 0;
+                border-radius: 0;
+                box-shadow: none;
+            }
+
+            .form-header {
+                padding: 28px 18px;
+            }
+
+            .form-header h1 {
+                font-size: 27px;
+            }
+
+            .form-header p {
+                font-size: 14px;
+            }
+
+            .logo-card {
+                padding: 14px 18px;
+                border-radius: 18px;
+            }
+
+            .logo {
+                width: 170px;
+            }
+
+            .form-body {
+                padding: 25px 15px 32px;
+            }
+
+            .section-heading {
+                align-items: flex-start;
+            }
+
+            .section-heading h2 {
+                padding-top: 4px;
+                font-size: 19px;
+            }
+
+            .subsection-title {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .documents-information {
+                padding: 18px;
+            }
+
+            .file-upload-label {
+                min-height: 170px;
+                padding: 22px 14px;
+            }
+
+            .submit-button {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="page-container">
+        <div class="form-card">
+            <header class="form-header">
+                <div class="header-content">
+                    <div class="logo-card">
+                        <img
+                            src="https://www.activainmobiliaria360.com/image.png"
+                            alt="Activa Agencia Inmobiliaria 360"
+                            class="logo"
+                        >
+                    </div>
+
+                    <h1>Estudio de Financiación Hipotecaria</h1>
+
+                    <p>
+                        Complete los datos de la unidad familiar para analizar
+                        la viabilidad de su operación de compraventa.
+                    </p>
+
+                    <div class="gold-line"></div>
+                </div>
+            </header>
+
+            <form
+                action="procesar-formulario.php"
+                method="POST"
+                enctype="multipart/form-data"
+                class="form-body"
+            >
+                <!-- PROMOCIÓN -->
+                <section class="form-section">
+                    <div class="form-group">
+                        <label for="promocion">
+                            Inmueble / Promoción de Interés
+                            <span class="required">*</span>
+                        </label>
+
+                        <select id="promocion" name="promocion" required>
+                            <option value="" selected disabled>
+                                Seleccione una promoción...
+                            </option>
+                            <option value="Méntrida (Toledo)">Méntrida (Toledo)</option>
+                            <option value="Marchamalo (Guadalajara)">Marchamalo (Guadalajara)</option>
+                        </select>
+                    </div>
+                </section>
+
+                <!-- INFORMACIÓN DE LOS SOLICITANTES -->
+                <section class="form-section">
+                    <div class="section-heading">
+                        <span class="section-number">1</span>
+                        <h2>Información de los Solicitantes</h2>
+                    </div>
+
+                    <!-- TITULAR 1 -->
+                    <div class="subsection">
+                        <h3 class="subsection-title">
+                            <span>Titular 1 (Principal)</span>
+                        </h3>
+
+                        <div class="form-grid">
+                            <div class="form-group full-width">
+                                <label for="titular1_nombre">
+                                    Nombre y Apellidos
+                                    <span class="required">*</span>
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="titular1_nombre"
+                                    name="titular1_nombre"
+                                    placeholder="Nombre completo del titular principal"
+                                    autocomplete="name"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="titular1_dni">
+                                    DNI / NIE
+                                    <span class="required">*</span>
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="titular1_dni"
+                                    name="titular1_dni"
+                                    placeholder="Ej. 12345678A"
+                                    autocomplete="off"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="titular1_fecha_nacimiento">
+                                    Fecha de Nacimiento
+                                    <span class="required">*</span>
+                                </label>
+
+                                <input
+                                    type="date"
+                                    id="titular1_fecha_nacimiento"
+                                    name="titular1_fecha_nacimiento"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="titular1_nacionalidad">
+                                    Nacionalidad
+                                    <span class="required">*</span>
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="titular1_nacionalidad"
+                                    name="titular1_nacionalidad"
+                                    placeholder="Ej. Española"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="titular1_estado_civil">
+                                    Estado Civil
+                                    <span class="required">*</span>
+                                </label>
+
+                                <select
+                                    id="titular1_estado_civil"
+                                    name="titular1_estado_civil"
+                                    required
+                                >
+                                    <option value="" selected disabled>Seleccione...</option>
+                                    <option value="Soltero/a">Soltero/a</option>
+                                    <option value="Casado/a">Casado/a</option>
+                                    <option value="Divorciado/a">Divorciado/a</option>
+                                    <option value="Pareja de hecho">Pareja de hecho</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label for="titular1_profesion">
+                                    Profesión / Ocupación
+                                    <span class="required">*</span>
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="titular1_profesion"
+                                    name="titular1_profesion"
+                                    placeholder="Indique su profesión u ocupación actual"
+                                    autocomplete="organization-title"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="titular1_tipo_contrato">
+                                    Tipo de Contrato
+                                    <span class="required">*</span>
+                                </label>
+
+                                <select
+                                    id="titular1_tipo_contrato"
+                                    name="titular1_tipo_contrato"
+                                    required
+                                >
+                                    <option value="" selected disabled>Seleccione...</option>
+                                    <option value="Indefinido">Indefinido</option>
+                                    <option value="Autónomo">Autónomo</option>
+                                    <option value="Funcionario">Funcionario</option>
+                                    <option value="Temporal / Otro">Temporal / Otro</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="titular1_antiguedad_laboral">
+                                    Antigüedad Laboral
+                                    <span class="required">*</span>
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="titular1_antiguedad_laboral"
+                                    name="titular1_antiguedad_laboral"
+                                    placeholder="Ej. 5 años y 3 meses"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label for="titular1_ingresos">
+                                    Ingresos Netos Mensuales (€)
+                                    <span class="required">*</span>
+                                </label>
+
+                                <div class="input-prefix-wrapper">
+                                    <input
+                                        type="number"
+                                        id="titular1_ingresos"
+                                        name="titular1_ingresos"
+                                        placeholder="Ej. 1800"
+                                        min="0"
+                                        step="0.01"
+                                        inputmode="decimal"
+                                        required
+                                    >
+                                    <span class="input-prefix">€</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TITULAR 2 -->
+                    <div class="subsection">
+                        <h3 class="subsection-title">
+                            <span>Titular 2</span>
+                            <span class="optional-label">Opcional</span>
+                        </h3>
+
+                        <div class="form-grid">
+                            <div class="form-group full-width">
+                                <label for="titular2_nombre">Nombre y Apellidos</label>
+                                <input
+                                    type="text"
+                                    id="titular2_nombre"
+                                    name="titular2_nombre"
+                                    placeholder="Nombre completo del segundo titular"
+                                    autocomplete="off"
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="titular2_dni">DNI / NIE</label>
+                                <input
+                                    type="text"
+                                    id="titular2_dni"
+                                    name="titular2_dni"
+                                    placeholder="Ej. 12345678A"
+                                    autocomplete="off"
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="titular2_fecha_nacimiento">Fecha de Nacimiento</label>
+                                <input
+                                    type="date"
+                                    id="titular2_fecha_nacimiento"
+                                    name="titular2_fecha_nacimiento"
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="titular2_nacionalidad">Nacionalidad</label>
+                                <input
+                                    type="text"
+                                    id="titular2_nacionalidad"
+                                    name="titular2_nacionalidad"
+                                    placeholder="Ej. Española"
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="titular2_estado_civil">Estado Civil</label>
+                                <select id="titular2_estado_civil" name="titular2_estado_civil">
+                                    <option value="" selected>Seleccione...</option>
+                                    <option value="Soltero/a">Soltero/a</option>
+                                    <option value="Casado/a">Casado/a</option>
+                                    <option value="Divorciado/a">Divorciado/a</option>
+                                    <option value="Pareja de hecho">Pareja de hecho</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label for="titular2_profesion">Profesión / Ocupación</label>
+                                <input
+                                    type="text"
+                                    id="titular2_profesion"
+                                    name="titular2_profesion"
+                                    placeholder="Indique su profesión u ocupación actual"
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="titular2_tipo_contrato">Tipo de Contrato</label>
+                                <select id="titular2_tipo_contrato" name="titular2_tipo_contrato">
+                                    <option value="" selected>Seleccione...</option>
+                                    <option value="Indefinido">Indefinido</option>
+                                    <option value="Autónomo">Autónomo</option>
+                                    <option value="Funcionario">Funcionario</option>
+                                    <option value="Temporal / Otro">Temporal / Otro</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="titular2_antiguedad_laboral">Antigüedad Laboral</label>
+                                <input
+                                    type="text"
+                                    id="titular2_antiguedad_laboral"
+                                    name="titular2_antiguedad_laboral"
+                                    placeholder="Ej. 5 años y 3 meses"
+                                >
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label for="titular2_ingresos">Ingresos Netos Mensuales (€)</label>
+                                <div class="input-prefix-wrapper">
+                                    <input
+                                        type="number"
+                                        id="titular2_ingresos"
+                                        name="titular2_ingresos"
+                                        placeholder="Ej. 1500"
+                                        min="0"
+                                        step="0.01"
+                                        inputmode="decimal"
+                                    >
+                                    <span class="input-prefix">€</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CONTACTO -->
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="telefono">
+                                Teléfono de Contacto Principal
+                                <span class="required">*</span>
+                            </label>
+
+                            <input
+                                type="tel"
+                                id="telefono"
+                                name="telefono"
+                                placeholder="Ej. 600 000 000"
+                                autocomplete="tel"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">
+                                Email de Contacto Principal
+                                <span class="required">*</span>
+                            </label>
+
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                placeholder="Ej. nombre@email.com"
+                                autocomplete="email"
+                                required
+                            >
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CAPACIDAD FINANCIERA -->
+                <section class="form-section">
+                    <div class="section-heading">
+                        <span class="section-number">2</span>
+                        <h2>Capacidad Financiera Global</h2>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="ahorros_disponibles">
+                                Ahorros Propios Disponibles (Aportación)
+                                <span class="required">*</span>
+                            </label>
+
+                            <div class="input-prefix-wrapper">
+                                <input
+                                    type="number"
+                                    id="ahorros_disponibles"
+                                    name="ahorros_disponibles"
+                                    placeholder="Ej. 50000"
+                                    min="0"
+                                    step="0.01"
+                                    inputmode="decimal"
+                                    required
+                                >
+                                <span class="input-prefix">€</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="otros_prestamos">
+                                ¿Pago mensual total de otros préstamos?
+                            </label>
+
+                            <div class="input-prefix-wrapper">
+                                <input
+                                    type="number"
+                                    id="otros_prestamos"
+                                    name="otros_prestamos"
+                                    placeholder="Coche, préstamo personal, etc."
+                                    min="0"
+                                    step="0.01"
+                                    inputmode="decimal"
+                                >
+                                <span class="input-prefix">€</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="otras_propiedades">
+                                ¿Tienen otras propiedades a su nombre?
+                                Detalle si tienen cargas o hipotecas:
+                            </label>
+
+                            <textarea
+                                id="otras_propiedades"
+                                name="otras_propiedades"
+                                placeholder="Indique las propiedades existentes y si tienen alguna hipoteca o carga pendiente. Si no tienen otras propiedades, escriba: No."
+                            ></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- DOCUMENTACIÓN -->
+                <section class="form-section">
+                    <div class="section-heading">
+                        <span class="section-number">3</span>
+                        <h2>Adjuntar Documentación Digital</h2>
+                    </div>
+
+                    <div class="documents-information">
+                        <p>Por favor, seleccione todos los documentos requeridos:</p>
+                        <ul>
+                            <li>3 Últimas Nóminas</li>
+                            <li>Última Declaración de la Renta</li>
+                            <li>DNIs por ambas caras</li>
+                        </ul>
+                        <p>Puede seleccionarlos todos juntos.</p>
+                    </div>
+
+                    <div class="file-upload">
+                        <input
+                            type="file"
+                            id="documentos_archivos"
+                            name="documentos_archivos[]"
+                            accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                            multiple
+                            required
+                            onchange="updateFileLabel()"
+                        >
+
+                        <label
+                            for="documentos_archivos"
+                            class="file-upload-label"
+                            id="fileUploadLabel"
+                        >
+                            <span class="upload-content">
+                                <span class="upload-icon">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                        stroke-width="1.8"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14.5v3A2.5 2.5 0 007.5 20h9a2.5 2.5 0 002.5-2.5v-3"
+                                        />
+                                    </svg>
+                                </span>
+
+                                <span class="upload-title" id="fileUploadTitle">
+                                    Haga clic aquí para seleccionar los archivos
+                                </span>
+
+                                <span class="upload-help">
+                                    Formatos permitidos: PDF, JPG y PNG.
+                                    Puede subir varios archivos simultáneamente.
+                                </span>
+                            </span>
+                        </label>
+
+                        <div
+                            class="selected-files"
+                            id="selectedFiles"
+                            aria-live="polite"
+                        ></div>
+                    </div>
+
+                    <!-- RGPD -->
+                    <div class="privacy-box">
+                        <p class="privacy-text">
+                            En cumplimiento del Reglamento General de Protección
+                            de Datos (RGPD), le informamos que los datos y archivos
+                            aportados serán tratados con la exclusiva finalidad de
+                            analizar y tramitar la viabilidad de su operación
+                            financiera con nuestros partners bancarios oficiales.
+                            Los datos no se cederán a terceros ajenos a este proceso.
+                        </p>
+
+                        <div class="checkbox-group">
+                            <input
+                                type="checkbox"
+                                id="consentimiento_rgpd"
+                                name="consentimiento_rgpd"
+                                value="Sí"
+                                required
+                            >
+
+                            <label for="consentimiento_rgpd">
+                                Consiento expresamente el tratamiento de mis datos
+                                y documentación para el estudio financiero.
+                                <span class="required">*</span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- BOTÓN -->
+                <div class="submit-area">
+                    <button type="submit" class="submit-button">
+                        <span>Enviar Datos y Documentación para Estudio</span>
+
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M5 12h14m-5-5l5 5-5 5"
+                            />
+                        </svg>
+                    </button>
+                </div>
+            </form>
+
+            <footer class="form-footer">
+                Activa Agencia Inmobiliaria 360 · Estudio de viabilidad financiera
+            </footer>
+        </div>
+    </main>
+
+    <script>
+        function updateFileLabel() {
+            const fileInput = document.getElementById("documentos_archivos");
+            const uploadTitle = document.getElementById("fileUploadTitle");
+            const selectedFiles = document.getElementById("selectedFiles");
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                uploadTitle.textContent = "Haga clic aquí para seleccionar los archivos";
+                selectedFiles.innerHTML = "";
+                selectedFiles.classList.remove("visible");
+                return;
+            }
+
+            const numberOfFiles = fileInput.files.length;
+
+            uploadTitle.textContent =
+                numberOfFiles === 1
+                    ? "1 archivo seleccionado"
+                    : numberOfFiles + " archivos seleccionados";
+
+            const fileNames = Array.from(fileInput.files)
+                .map(function(file) {
+                    return escapeHTML(file.name);
+                })
+                .join("<br>");
+
+            selectedFiles.innerHTML =
+                "<strong>Archivos seleccionados:</strong><br>" + fileNames;
+
+            selectedFiles.classList.add("visible");
+        }
+
+        function escapeHTML(value) {
+            const element = document.createElement("div");
+            element.textContent = value;
+            return element.innerHTML;
+        }
+
+        const uploadLabel = document.getElementById("fileUploadLabel");
+        const fileInput = document.getElementById("documentos_archivos");
+
+        ["dragenter", "dragover"].forEach(function(eventName) {
+            uploadLabel.addEventListener(eventName, function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                uploadLabel.classList.add("drag-active");
+            });
+        });
+
+        ["dragleave", "drop"].forEach(function(eventName) {
+            uploadLabel.addEventListener(eventName, function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                uploadLabel.classList.remove("drag-active");
+            });
+        });
+
+        uploadLabel.addEventListener("drop", function(event) {
+            const droppedFiles = event.dataTransfer.files;
+
+            if (!droppedFiles || droppedFiles.length === 0) {
+                return;
+            }
+
+            const dataTransfer = new DataTransfer();
+
+            Array.from(droppedFiles).forEach(function(file) {
+                dataTransfer.items.add(file);
+            });
+
+            fileInput.files = dataTransfer.files;
+            updateFileLabel();
+        });
+    </script>
+</body>
+</html>
