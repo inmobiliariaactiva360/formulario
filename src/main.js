@@ -156,7 +156,7 @@ form.addEventListener('submit', async (event) => {
         submitButtonText.textContent = 'Guardando y enviando correo…';
         showStatus('loading', 'Documentación subida. Generando el expediente y enviando el correo…');
 
-        const response = await fetch('/api/submit', {
+        const response = await fetch('/api/submit-handler', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ folder, fields, files: uploadedFiles }),
