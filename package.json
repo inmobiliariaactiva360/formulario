@@ -9,7 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@vercel/blob": "^2.6.1"
+    "@vercel/blob": "^2.6.1",
+    "nodemailer": "^7.0.5"
   },
   "devDependencies": {
     "vite": "^7.0.0"
