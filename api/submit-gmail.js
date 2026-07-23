@@ -1,10 +1,10 @@
+import nodemailer from 'nodemailer';
 import { get, head, put } from '@vercel/blob';
 
-const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
-const RECIPIENT_EMAIL = process.env.GMAIL_USER || 'inmobiliariaactiva360@gmail.com';
+const DEFAULT_EMAIL = 'inmobiliariaactiva360@gmail.com';
 const MAX_FILES = 20;
 const MAX_TOTAL_BYTES = 60 * 1024 * 1024;
-const MAX_EMAIL_RAW_BYTES = 18 * 1024 * 1024;
+const MAX_EMAIL_ATTACHMENT_BYTES = 18 * 1024 * 1024;
 const ALLOWED_CONTENT_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png']);
 
 const LABELS = {
@@ -75,7 +75,10 @@ function isSafeFolder(folder) {
 function formatMoney(value) {
   const number = Number(String(value || '').replace(',', '.'));
   if (!Number.isFinite(number)) return value || 'No indicado';
-  return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(number);
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(number);
 }
 
 function formattedValue(field, value) {
@@ -111,14 +114,20 @@ function buildSummaryHtml(fields, files, receivedAt) {
     `<li><strong>${escapeHtml(file.storedName)}</strong> — original: ${escapeHtml(file.originalName)} (${Math.round(file.size / 1024)} KB)</li>`
   )).join('');
 
-  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Solicitud de financiación</title></head><body style="font-family:Arial,sans-serif;color:#283344;line-height:1.5"><h1 style="color:#172033">Solicitud de estudio de financiación</h1><p><strong>Fecha de recepción:</strong> ${escapeHtml(receivedAt)}</p><table style="border-collapse:collapse;width:100%;max-width:950px"><style>th,td{padding:10px;border:1px solid #dce2ea;text-align:left}th{background:#f4f6f9;width:38%}</style>${rows}</table><h2 style="color:#172033">Documentación recibida</h2><ul>${fileRows}</ul></body></html>`;
+  return `<!doctype html><html lang="es"><head><meta charset="UTF-8"><title>Solicitud de financiación</title></head><body style="font-family:Arial,sans-serif;color:#283344;line-height:1.5"><h1 style="color:#172033">Solicitud de estudio de financiación</h1><p><strong>Fecha de recepción:</strong> ${escapeHtml(receivedAt)}</p><table style="border-collapse:collapse;width:100%;max-width:950px"><style>th,td{padding:10px;border:1px solid #dce2ea;text-align:left}th{background:#f4f6f9;width:38%}</style>${rows}</table><h2 style="color:#172033">Documentación recibida</h2><ul>${fileRows}</ul></body></html>`;
 }
 
 function buildSummaryText(fields, files, receivedAt) {
-  const lines = ['SOLICITUD DE ESTUDIO DE FINANCIACIÓN', `Fecha de recepción: ${receivedAt}`, '='.repeat(70)];
+  const lines = [
+    'SOLICITUD DE ESTUDIO DE FINANCIACIÓN',
+    `Fecha de recepción: ${receivedAt}`,
+    '='.repeat(70),
+  ];
+
   Object.entries(LABELS).forEach(([field, label]) => {
     lines.push(`${label}: ${formattedValue(field, fields[field])}`);
   });
+
   lines.push('', 'DOCUMENTACIÓN RECIBIDA', '-'.repeat(70));
   files.forEach((file) => lines.push(`- ${file.storedName} (original: ${file.originalName})`));
   return `${lines.join('\n')}\n`;
@@ -130,128 +139,67 @@ async function readPrivateBlob(pathname, filename) {
     12000,
     `Tiempo agotado al recuperar ${filename}.`,
   );
+
   if (!result || result.statusCode !== 200 || !result.stream) {
     throw new Error(`No se pudo recuperar ${filename} para adjuntarlo.`);
   }
+
   const arrayBuffer = await withTimeout(
     new Response(result.stream).arrayBuffer(),
     12000,
     `Tiempo agotado al leer ${filename}.`,
   );
+
   return Buffer.from(arrayBuffer);
 }
 
-function encodeHeader(value) {
-  return `=?UTF-8?B?${Buffer.from(String(value), 'utf8').toString('base64')}?=`;
-}
+function gmailTransport() {
+  const user = cleanText(process.env.GMAIL_USER, 320);
+  const password = String(process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '');
 
-function wrapBase64(buffer) {
-  return buffer.toString('base64').match(/.{1,76}/g)?.join('\r\n') || '';
-}
-
-function toBase64Url(value) {
-  return Buffer.from(value, 'utf8')
-    .toString('base64')
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
-    .replace(/=+$/g, '');
-}
-
-function buildMimeMessage({ from, to, replyTo, subject, html, attachments }) {
-  const boundary = `activa360_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-  const lines = [
-    `From: ${encodeHeader('Activa Inmobiliaria 360')} <${from}>`,
-    `To: ${to}`,
-    `Reply-To: ${replyTo}`,
-    `Subject: ${encodeHeader(subject)}`,
-    'MIME-Version: 1.0',
-    `Content-Type: multipart/mixed; boundary="${boundary}"`,
-    '',
-    `--${boundary}`,
-    'Content-Type: text/html; charset="UTF-8"',
-    'Content-Transfer-Encoding: base64',
-    '',
-    wrapBase64(Buffer.from(html, 'utf8')),
-  ];
-
-  for (const attachment of attachments) {
-    lines.push(
-      `--${boundary}`,
-      `Content-Type: ${attachment.contentType || 'application/octet-stream'}; name="${attachment.filename.replaceAll('"', '')}"`,
-      'Content-Transfer-Encoding: base64',
-      `Content-Disposition: attachment; filename="${attachment.filename.replaceAll('"', '')}"`,
-      '',
-      wrapBase64(attachment.content),
-    );
+  if (!user || !password) {
+    throw new Error('Faltan GMAIL_USER o GMAIL_APP_PASSWORD en Vercel.');
   }
 
-  lines.push(`--${boundary}--`, '');
-  return lines.join('\r\n');
+  return {
+    user,
+    transporter: nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user,
+        pass: password,
+      },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 30000,
+    }),
+  };
 }
 
-async function getGoogleAccessToken() {
-  const clientId = process.env.GMAIL_CLIENT_ID;
-  const clientSecret = process.env.GMAIL_CLIENT_SECRET;
-  const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
-
-  if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error('Faltan GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET o GMAIL_REFRESH_TOKEN en Vercel.');
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
-
-  try {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      signal: controller.signal,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token',
-      }),
-    });
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.access_token) {
-      throw new Error(data.error_description || data.error || `Google OAuth respondió con ${response.status}.`);
-    }
-    return data.access_token;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function sendWithGmailApi({ fields, files, summaryHtml, summaryText, folder }) {
-  const gmailUser = process.env.GMAIL_USER;
-  if (!gmailUser) {
-    return { sent: false, warning: 'falta GMAIL_USER en Vercel' };
-  }
-
+async function sendWithGmailSmtp({ fields, files, summaryHtml, summaryText, folder }) {
+  const { user, transporter } = gmailTransport();
   const attachments = [
     {
       filename: 'resultado-formulario.html',
-      contentType: 'text/html; charset=utf-8',
       content: Buffer.from(summaryHtml, 'utf8'),
+      contentType: 'text/html; charset=utf-8',
     },
     {
       filename: 'resultado-formulario.txt',
-      contentType: 'text/plain; charset=utf-8',
       content: Buffer.from(summaryText, 'utf8'),
+      contentType: 'text/plain; charset=utf-8',
     },
   ];
 
   const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
   let attachmentNote = '';
 
-  if (totalBytes <= MAX_EMAIL_RAW_BYTES) {
+  if (totalBytes <= MAX_EMAIL_ATTACHMENT_BYTES) {
     for (const file of files) {
       attachments.push({
         filename: file.storedName,
-        contentType: file.contentType,
         content: await readPrivateBlob(file.pathname, file.storedName),
+        contentType: file.contentType,
       });
     }
   } else {
@@ -259,38 +207,22 @@ async function sendWithGmailApi({ fields, files, summaryHtml, summaryText, folde
   }
 
   const emailHtml = `${summaryHtml.replace('</body></html>', '')}${attachmentNote}<p><strong>Carpeta privada:</strong> ${escapeHtml(folder)}</p></body></html>`;
-  const mime = buildMimeMessage({
-    from: gmailUser,
-    to: gmailUser,
-    replyTo: fields.email,
-    subject: `Nueva solicitud de financiación - ${fields.titular1_nombre || 'Sin nombre'}`,
-    html: emailHtml,
-    attachments,
-  });
 
-  const accessToken = await getGoogleAccessToken();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 25000);
+  const info = await withTimeout(
+    transporter.sendMail({
+      from: `"Activa Inmobiliaria 360" <${user}>`,
+      to: user,
+      replyTo: fields.email,
+      subject: `Nueva solicitud de financiación - ${fields.titular1_nombre || 'Sin nombre'}`,
+      html: emailHtml,
+      text: summaryText,
+      attachments,
+    }),
+    45000,
+    'Gmail tardó demasiado en enviar el correo.',
+  );
 
-  try {
-    const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ raw: toBase64Url(mime) }),
-    });
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data?.error?.message || `Gmail API respondió con ${response.status}.`);
-    }
-    return { sent: true, id: data.id || null };
-  } finally {
-    clearTimeout(timer);
-  }
+  return { sent: true, id: info.messageId || null };
 }
 
 export async function POST(request) {
@@ -305,6 +237,7 @@ export async function POST(request) {
     if (!isSafeFolder(folder)) {
       return Response.json({ ok: false, error: 'Carpeta de solicitud no válida.' }, { status: 400 });
     }
+
     if (!incomingFields || typeof incomingFields !== 'object' || Array.isArray(incomingFields)) {
       return Response.json({ ok: false, error: 'Los datos del formulario no son válidos.' }, { status: 400 });
     }
@@ -319,9 +252,11 @@ export async function POST(request) {
         return Response.json({ ok: false, error: `Falta el campo obligatorio: ${LABELS[field]}.` }, { status: 400 });
       }
     }
+
     if (!/^\S+@\S+\.\S+$/.test(fields.email)) {
       return Response.json({ ok: false, error: 'El email de contacto no es válido.' }, { status: 400 });
     }
+
     if (!Array.isArray(incomingFiles) || incomingFiles.length < 1 || incomingFiles.length > MAX_FILES) {
       return Response.json({ ok: false, error: 'La lista de documentos no es válida.' }, { status: 400 });
     }
@@ -332,11 +267,17 @@ export async function POST(request) {
     for (const item of incomingFiles) {
       const pathname = cleanText(item?.pathname, 1000);
       const expectedPrefix = `${folder}/documentos/`;
+
       if (!pathname.startsWith(expectedPrefix) || pathname.includes('..')) {
         return Response.json({ ok: false, error: 'Se ha detectado una ruta de documento no válida.' }, { status: 400 });
       }
 
-      const metadata = await withTimeout(head(pathname), 10000, `Tiempo agotado al verificar ${pathname}.`);
+      const metadata = await withTimeout(
+        head(pathname),
+        10000,
+        `Tiempo agotado al verificar ${pathname}.`,
+      );
+
       if (!ALLOWED_CONTENT_TYPES.has(metadata.contentType)) {
         return Response.json({ ok: false, error: `Tipo de documento no permitido: ${pathname}.` }, { status: 400 });
       }
@@ -363,13 +304,19 @@ export async function POST(request) {
     await withTimeout(
       Promise.all([
         put(`${folder}/resultado-formulario.html`, summaryHtml, {
-          access: 'private', contentType: 'text/html; charset=utf-8', addRandomSuffix: false,
+          access: 'private',
+          contentType: 'text/html; charset=utf-8',
+          addRandomSuffix: false,
         }),
         put(`${folder}/resultado-formulario.txt`, summaryText, {
-          access: 'private', contentType: 'text/plain; charset=utf-8', addRandomSuffix: false,
+          access: 'private',
+          contentType: 'text/plain; charset=utf-8',
+          addRandomSuffix: false,
         }),
         put(`${folder}/datos-formulario.json`, jsonContent, {
-          access: 'private', contentType: 'application/json; charset=utf-8', addRandomSuffix: false,
+          access: 'private',
+          contentType: 'application/json; charset=utf-8',
+          addRandomSuffix: false,
         }),
       ]),
       20000,
@@ -378,19 +325,24 @@ export async function POST(request) {
 
     let emailResult;
     try {
-      emailResult = await sendWithGmailApi({ fields, files, summaryHtml, summaryText, folder });
+      emailResult = await sendWithGmailSmtp({
+        fields,
+        files,
+        summaryHtml,
+        summaryText,
+        folder,
+      });
     } catch (emailError) {
-      console.error('Expediente guardado, pero falló Gmail API:', emailError);
+      console.error('Expediente guardado, pero falló Gmail SMTP:', emailError);
       emailResult = {
         sent: false,
         warning: emailError instanceof Error ? emailError.message : 'error de Gmail no identificado',
       };
     }
 
-    console.log('Solicitud finalizada con Gmail API', {
+    console.log('Solicitud finalizada con Gmail SMTP', {
       emailSent: emailResult.sent,
       durationMs: Date.now() - startedAt,
-      scope: GMAIL_SCOPE,
     });
 
     return Response.json({
