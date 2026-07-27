@@ -15,6 +15,23 @@ const submitStatus = document.getElementById('submitStatus');
 
 let selectedFiles = [];
 
+const FIELD_LABELS = {
+    promocion: 'Inmueble / Promoción de Interés',
+    titular1_nombre: 'Nombre y Apellidos del titular principal',
+    titular1_dni: 'DNI / NIE del titular principal',
+    titular1_fecha_nacimiento: 'Fecha de Nacimiento del titular principal',
+    titular1_nacionalidad: 'Nacionalidad del titular principal',
+    titular1_estado_civil: 'Estado Civil del titular principal',
+    titular1_profesion: 'Profesión / Ocupación del titular principal',
+    titular1_tipo_contrato: 'Tipo de Contrato del titular principal',
+    titular1_antiguedad_laboral: 'Antigüedad Laboral del titular principal',
+    titular1_ingresos: 'Ingresos Netos Mensuales del titular principal',
+    telefono: 'Teléfono de Contacto Principal',
+    email: 'Email de Contacto Principal',
+    ahorros_disponibles: 'Ahorros Propios Disponibles',
+    consentimiento_rgpd: 'Consentimiento para el tratamiento de datos',
+};
+
 function safeSegment(value, fallback = 'solicitud') {
     const normalized = String(value || '')
         .normalize('NFD')
@@ -64,6 +81,68 @@ function setSubmitting(isSubmitting, text = '') {
     submitButtonText.textContent = isSubmitting
         ? text || 'Enviando solicitud…'
         : 'Enviar Datos y Documentación para Estudio';
+}
+
+function getFieldLabel(field) {
+    if (FIELD_LABELS[field.name]) {
+        return FIELD_LABELS[field.name];
+    }
+
+    if (field.id) {
+        const explicitLabel = form.querySelector(`label[for="${CSS.escape(field.id)}"]`);
+        if (explicitLabel) {
+            return explicitLabel.textContent.replace('*', '').trim();
+        }
+    }
+
+    const nearbyLabel = field.closest('.group, .form-group, .check, .checkbox-group')?.querySelector('label');
+    return nearbyLabel?.textContent.replace('*', '').trim() || 'un campo obligatorio';
+}
+
+function clearInvalidField(field) {
+    field.removeAttribute('aria-invalid');
+    field.style.removeProperty('border-color');
+    field.style.removeProperty('box-shadow');
+}
+
+function markInvalidField(field) {
+    field.setAttribute('aria-invalid', 'true');
+    field.style.borderColor = '#b42318';
+    field.style.boxShadow = '0 0 0 4px rgba(180, 35, 24, 0.12)';
+}
+
+function focusInvalidField(field) {
+    field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    window.setTimeout(() => {
+        try {
+            field.focus({ preventScroll: true });
+        } catch {
+            field.focus();
+        }
+
+        if (typeof field.reportValidity === 'function') {
+            field.reportValidity();
+        }
+    }, 450);
+}
+
+function validateRequiredFields() {
+    const fields = Array.from(form.querySelectorAll('input, select, textarea'))
+        .filter((field) => field !== fileInput && !field.disabled);
+
+    fields.forEach(clearInvalidField);
+
+    const firstInvalidField = fields.find((field) => !field.checkValidity());
+    if (!firstInvalidField) {
+        return true;
+    }
+
+    const label = getFieldLabel(firstInvalidField);
+    markInvalidField(firstInvalidField);
+    showStatus('error', `Falta completar un campo obligatorio: ${label}.`);
+    focusInvalidField(firstInvalidField);
+    return false;
 }
 
 function validateFiles(files) {
@@ -327,6 +406,18 @@ async function postSolicitud(payload) {
 
 fileInput.required = false;
 
+form.addEventListener('input', (event) => {
+    if (event.target instanceof HTMLElement) {
+        clearInvalidField(event.target);
+    }
+});
+
+form.addEventListener('change', (event) => {
+    if (event.target instanceof HTMLElement) {
+        clearInvalidField(event.target);
+    }
+});
+
 fileInput.addEventListener('change', () => {
     try {
         addFiles(Array.from(fileInput.files || []));
@@ -366,7 +457,7 @@ renderSelectedFiles();
 form.addEventListener('submit', async (event) => {
     event.preventDefault();
 
-    if (!form.reportValidity()) {
+    if (!validateRequiredFields()) {
         return;
     }
 
@@ -449,6 +540,10 @@ form.addEventListener('submit', async (event) => {
     } catch (error) {
         console.error(error);
         showStatus('error', error instanceof Error ? error.message : 'Se produjo un error inesperado.');
+
+        if (!selectedFiles.length) {
+            fileUploadLabel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     } finally {
         setSubmitting(false);
     }
