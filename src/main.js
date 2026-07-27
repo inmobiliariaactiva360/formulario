@@ -6,9 +6,14 @@ const ALLOWED_EXTENSIONS = new Set(['pdf', 'jpg', 'jpeg', 'png']);
 
 const form = document.getElementById('financingForm');
 const fileInput = document.getElementById('documentos_archivos');
+const fileUploadLabel = document.getElementById('fileUploadLabel');
+const fileUploadTitle = document.getElementById('fileUploadTitle');
+const selectedFilesContainer = document.getElementById('selectedFiles');
 const submitButton = document.getElementById('submitButton');
 const submitButtonText = document.getElementById('submitButtonText');
 const submitStatus = document.getElementById('submitStatus');
+
+let selectedFiles = [];
 
 function safeSegment(value, fallback = 'solicitud') {
     const normalized = String(value || '')
@@ -49,6 +54,11 @@ function showStatus(type, message) {
     submitStatus.textContent = message;
 }
 
+function clearStatus() {
+    submitStatus.className = 'status';
+    submitStatus.textContent = '';
+}
+
 function setSubmitting(isSubmitting, text = '') {
     submitButton.disabled = isSubmitting;
     submitButtonText.textContent = isSubmitting
@@ -83,6 +93,102 @@ function validateFiles(files) {
     if (total > MAX_TOTAL_SIZE) {
         throw new Error('El tamaño total de los documentos supera los 60 MB.');
     }
+}
+
+function fileKey(file) {
+    return [file.name, file.size, file.lastModified].join('::');
+}
+
+function formatBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes <= 0) {
+        return '0 KB';
+    }
+
+    if (bytes < 1024 * 1024) {
+        return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+    }
+
+    return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
+}
+
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+    })[character]);
+}
+
+function renderSelectedFiles() {
+    const totalBytes = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+    const count = selectedFiles.length;
+
+    fileUploadTitle.textContent = count
+        ? `${count} archivo${count === 1 ? '' : 's'} preparado${count === 1 ? '' : 's'}`
+        : 'Haga clic aquí para seleccionar los archivos';
+
+    if (!count) {
+        selectedFilesContainer.innerHTML = '';
+        selectedFilesContainer.classList.remove('visible');
+        return;
+    }
+
+    const rows = selectedFiles.map((file, index) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;${index ? 'border-top:1px solid #dce2ea;' : ''}">
+            <span style="min-width:0;overflow-wrap:anywhere;">
+                <strong>${escapeHtml(file.name)}</strong><br>
+                <span style="color:#687386;">${formatBytes(file.size)}</span>
+            </span>
+            <button
+                type="button"
+                data-remove-file="${index}"
+                aria-label="Quitar ${escapeHtml(file.name)}"
+                style="flex:0 0 auto;border:1px solid #dce2ea;border-radius:9px;background:#fff;color:#b42318;padding:7px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;"
+            >Quitar</button>
+        </div>
+    `).join('');
+
+    selectedFilesContainer.innerHTML = `
+        <div style="margin-bottom:10px;">
+            <strong>${count} de ${MAX_FILES} documentos · ${formatBytes(totalBytes)} de 60 MB</strong><br>
+            <span style="color:#687386;">Puede pulsar otra vez en el recuadro para añadir más documentos.</span>
+        </div>
+        ${rows}
+    `;
+    selectedFilesContainer.classList.add('visible');
+}
+
+function addFiles(files) {
+    if (!files.length) {
+        return;
+    }
+
+    const knownKeys = new Set(selectedFiles.map(fileKey));
+    const uniqueNewFiles = files.filter((file) => !knownKeys.has(fileKey(file)));
+
+    if (!uniqueNewFiles.length) {
+        showStatus('warning', 'Esos documentos ya estaban añadidos.');
+        renderSelectedFiles();
+        return;
+    }
+
+    const candidateFiles = [...selectedFiles, ...uniqueNewFiles];
+    validateFiles(candidateFiles);
+    selectedFiles = candidateFiles;
+    clearStatus();
+    renderSelectedFiles();
+}
+
+function removeFile(index) {
+    if (!Number.isInteger(index) || index < 0 || index >= selectedFiles.length) {
+        return;
+    }
+
+    selectedFiles.splice(index, 1);
+    clearStatus();
+    renderSelectedFiles();
 }
 
 function collectFields() {
@@ -219,6 +325,44 @@ async function postSolicitud(payload) {
     );
 }
 
+fileInput.required = false;
+
+fileInput.addEventListener('change', () => {
+    try {
+        addFiles(Array.from(fileInput.files || []));
+    } catch (error) {
+        showStatus('error', error instanceof Error ? error.message : 'No se pudieron añadir los documentos.');
+        renderSelectedFiles();
+    } finally {
+        fileInput.value = '';
+    }
+});
+
+selectedFilesContainer.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-remove-file]');
+    if (!button) {
+        return;
+    }
+
+    removeFile(Number(button.dataset.removeFile));
+});
+
+fileUploadLabel.addEventListener('drop', (event) => {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    fileUploadLabel.classList.remove('drag');
+
+    try {
+        addFiles(Array.from(event.dataTransfer?.files || []));
+    } catch (error) {
+        showStatus('error', error instanceof Error ? error.message : 'No se pudieron añadir los documentos.');
+        renderSelectedFiles();
+    }
+}, true);
+
+window.updateFileLabel = renderSelectedFiles;
+renderSelectedFiles();
+
 form.addEventListener('submit', async (event) => {
     event.preventDefault();
 
@@ -226,7 +370,7 @@ form.addEventListener('submit', async (event) => {
         return;
     }
 
-    const files = Array.from(fileInput.files || []);
+    const files = selectedFiles.slice();
 
     try {
         validateFiles(files);
@@ -295,9 +439,9 @@ form.addEventListener('submit', async (event) => {
         }
 
         form.reset();
-        if (typeof window.updateFileLabel === 'function') {
-            window.updateFileLabel();
-        }
+        selectedFiles = [];
+        fileInput.value = '';
+        renderSelectedFiles();
         window.scrollTo({
             top: submitStatus.getBoundingClientRect().top + window.scrollY - 30,
             behavior: 'smooth',
