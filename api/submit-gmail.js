@@ -8,7 +8,6 @@ const MAX_EMAIL_ATTACHMENT_BYTES = 18 * 1024 * 1024;
 const ALLOWED_CONTENT_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png']);
 
 const LABELS = {
-  promocion: 'Inmueble / Promoción de interés',
   titular1_nombre: 'Titular 1 - Nombre y apellidos',
   titular1_dni: 'Titular 1 - DNI / NIE',
   titular1_fecha_nacimiento: 'Titular 1 - Fecha de nacimiento',
@@ -36,7 +35,6 @@ const LABELS = {
 };
 
 const REQUIRED_FIELDS = [
-  'promocion',
   'titular1_nombre',
   'titular1_dni',
   'titular1_fecha_nacimiento',
