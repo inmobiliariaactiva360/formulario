@@ -16,7 +16,6 @@ const submitStatus = document.getElementById('submitStatus');
 let selectedFiles = [];
 
 const FIELD_LABELS = {
-    promocion: 'Inmueble / Promoción de Interés',
     titular1_nombre: 'Nombre y Apellidos del titular principal',
     titular1_dni: 'DNI / NIE del titular principal',
     titular1_fecha_nacimiento: 'Fecha de Nacimiento del titular principal',
